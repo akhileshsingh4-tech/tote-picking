@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Tote Picking Slip | Pro</title>
+  <style>
+    :root { --bg:#090d16; --card-bg:#111827; --border:#1f2937; --primary:#3b82f6; --success:#10b981; --warning:#f59e0b; --danger:#ef4444; --text:#f9fafb; --muted:#9ca3af; --input:#1f2937; }
+    * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); }
+    .header { background:#111827; padding:14px 18px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+    .header h1 { margin:0; font-size:17px; font-weight:800; }
+    .container { max-width:520px; margin:auto; padding:14px; }
+    .card { background:var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:14px; box-shadow:0 4px 20px rgba(0,0,0,.3); }
+    .hidden { display:none !important; }
+    label { display:block; font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; margin:10px 0 4px; }
+    input { width:100%; padding:13px; background:var(--input); border:1.5px solid var(--border); border-radius:9px; color:#fff; font-size:15px; outline:none; }
+    input:focus { border-color:var(--primary); }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    button { width:100%; padding:14px; border-radius:9px; border:0; font-size:14px; font-weight:800; cursor:pointer; margin-top:8px; }
+    button:active { transform:scale(.98); }
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-success { background:var(--success); color:#fff; }
+    .btn-warning { background:var(--warning); color:#111827; }
+    .btn-danger { background:var(--danger); color:#fff; }
+    .btn-subtle { background:var(--input); color:#fff; border:1px solid var(--border); }
+    .tote-hero { background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.3); border-radius:10px; padding:12px; text-align:center; margin-bottom:12px; }
+    .tote-hero-id { font-size:24px; font-weight:900; color:#60a5fa; }
+    .metrics { display:flex; justify-content:space-around; background:rgba(0,0,0,.25); border-radius:8px; padding:8px; margin-top:8px; }
+    .metric-col small { display:block; font-size:10px; color:var(--muted); text-transform:uppercase; font-weight:700; }
+    .metric-col strong { font-size:16px; font-weight:900; }
+    .detail-item { display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
+    .detail-item:last-child { border-bottom:none; }
+    .detail-key { color:var(--muted); font-size:11px; text-transform:uppercase; }
+    .detail-val { font-weight:800; color:#fff; text-align:right; }
+    #toast { position:fixed; top:14px; left:50%; transform:translateX(-50%); background:#1f2937; border:1px solid var(--primary); color:#fff; padding:10px 18px; border-radius:20px; font-size:13px; font-weight:700; display:none; z-index:1000; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <h1>📦 Tote Picking Slip</h1>
+  <span style="font-size:11px;color:#34d399;font-weight:700;">● Online</span>
+</header>
+<div id="toast"></div>
+
+<main class="container">
+  <section class="card" id="scanCard">
+    <label>Tote ID (Barcode)</label>
+    <input id="toteId" type="text" placeholder="Scan or Enter Tote ID" autocomplete="off" autofocus>
+    <button class="btn-primary" onclick="loadTote()">▶ LOAD TOTE</button>
+    <div class="grid-2">
+      <button class="btn-subtle" onclick="viewToteStatus()">👁 View Status</button>
+      <button class="btn-subtle" onclick="viewHistoryLogs()">🕘 History Logs</button>
+    </div>
+  </section>
+
+  <section class="card hidden" id="pickCard">
+    <div class="tote-hero">
+      <div style="font-size:10px;color:#9ca3af;font-weight:700;">ACTIVE BATCH</div>
+      <div id="heroTote" class="tote-hero-id">---</div>
+      <div class="metrics">
+        <div class="metric-col"><small>Total</small><strong id="mTotal">0</strong></div>
+        <div class="metric-col"><small>Reject</small><strong id="mReject" style="color:var(--danger)">0</strong></div>
+        <div class="metric-col"><small>Net Picked</small><strong id="mNet" style="color:var(--success)">0</strong></div>
+      </div>
+    </div>
+    <label>Vendor</label>
+    <input id="vendor" type="text" placeholder="Vendor Name">
+    <div class="grid-2">
+      <div><label>Picker Name *</label><input id="picker" type="text" placeholder="Picker Name"></div>
+      <div><label>TL ID</label><input id="tl" type="text" placeholder="TL Number"></div>
+    </div>
+    <div class="grid-2">
+      <div><label>Total Qty *</label><input id="totalQty" type="number" min="0" placeholder="0" oninput="calcMetrics()"></div>
+      <div><label>Reject Qty</label><input id="rejectQty" type="number" min="0" value="0" oninput="calcMetrics()"></div>
+    </div>
+    <button class="btn-success" onclick="completePicking()">✅ COMPLETE PICKING & VRP</button>
+    <button class="btn-subtle" onclick="saveDraft()">💾 SAVE AS DRAFT</button>
+  </section>
+
+  <section class="card hidden" id="vrpCard">
+    <div style="font-size:14px;font-weight:800;color:var(--warning);margin-bottom:8px;">🔐 VRP Verification Gate</div>
+    <label>Scan VRP Number *</label>
+    <input id="vrp" type="text" placeholder="Scan VRP Barcode" autocomplete="off">
+    <button class="btn-warning" onclick="verifyVRP()">🔐 VERIFY VRP</button>
+  </section>
+
+  <section class="card hidden" id="viewCard">
+    <div style="font-size:14px;font-weight:800;margin-bottom:12px;">📊 Current Tote State</div>
+    <div class="detail-item"><span class="detail-key">Tote ID</span><span id="vTote" class="detail-val">---</span></div>
+    <div class="detail-item"><span class="detail-key">Vendor</span><span id="vVend" class="detail-val">---</span></div>
+    <div class="detail-item"><span class="detail-key">Picker</span><span id="vPick" class="detail-val">---</span></div>
+    <div class="detail-item"><span class="detail-key">Total Units</span><span id="vUnits" class="detail-val">---</span></div>
+    <div class="detail-item"><span class="detail-key">Status</span><span id="vStatus" class="detail-val">---</span></div>
+    <div class="detail-item"><span class="detail-key">VRP Number</span><span id="vVRP" class="detail-val">---</span></div>
+    <button class="btn-danger" onclick="resetTote()">♻️ COMPLETE CYCLE & DISPATCH</button>
+    <button class="btn-subtle" onclick="closeView()">✕ Close</button>
+  </section>
+
+  <section class="card hidden" id="histCard">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <span style="font-weight:800;font-size:13px;">🕘 Tote Audit Logs</span>
+      <button style="width:auto;padding:2px 8px;margin:0;" class="btn-subtle" onclick="closeHist()">✕</button>
+    </div>
+    <div id="histLogs"></div>
+  </section>
+</main>
+
+<script>
+  const SCRIPT_URL = "https://script.google.com/a/macros/flipkart.com/s/AKfycbxkRry2tSWZVDGyi4ATycYz9kxy69Lz2AM5wIppFviAAOcccq8aazUjNOAB0zJheR2vpw/exec"; // https://script.google.com/macros/s/.../exec
+
+  const el = id => document.getElementById(id);
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+  const toteVal = () => el("toteId").value.trim().toUpperCase();
+
+  function toast(msg) {
+    const t = el("toast");
+    t.textContent = msg;
+    t.style.display = "block";
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => { t.style.display = "none"; }, 2200);
+  }
+
+  async function apiCall(params) {
+    const url = new URL(SCRIPT_URL);
+    Object.keys(params).forEach(k => url.searchParams.append(k, params[k]));
+    const res = await fetch(url.toString());
+    return await res.json();
+  }
+
+  function formPayload() {
+    return {
+      toteId: toteVal(),
+      vendor: el("vendor").value.trim(),
+      pickerName: el("picker").value.trim(),
+      tlNo: el("tl").value.trim(),
+      totalQty: el("totalQty").value.trim(),
+      rejectQty: el("rejectQty").value.trim()
+    };
+  }
+
+  function calcMetrics() {
+    const total = Number(el("totalQty").value) || 0;
+    const reject = Number(el("rejectQty").value) || 0;
+    el("mTotal").textContent = total;
+    el("mReject").textContent = reject;
+    el("mNet").textContent = Math.max(0, total - reject);
+  }
+
+  async function loadTote() {
+    const tote = toteVal();
+    if (!tote) return toast("Enter Tote ID");
+    toast("Checking Tote...");
+    try {
+      const res = await apiCall({ action: "get", toteId: tote });
+      el("heroTote").textContent = tote;
+      el("pickCard").classList.remove("hidden");
+      el("viewCard").classList.add("hidden");
+      el("histCard").classList.add("hidden");
+
+      if (res && res.success && res.data) {
+        el("vendor").value = res.data.vendor || "";
+        el("picker").value = res.data.pickerName || "";
+        el("tl").value = res.data.tlNo || "";
+        el("totalQty").value = res.data.totalQty || "";
+        el("rejectQty").value = res.data.rejectQty || "0";
+        const st = res.data.status || "";
+        el("vrpCard").classList.toggle("hidden", !(st.includes("Complete") || st.includes("VRP")));
+        toast("Tote Loaded!");
+      } else {
+        ["vendor","picker","tl","totalQty"].forEach(i => el(i).value = "");
+        el("rejectQty").value = "0";
+        el("vrpCard").classList.add("hidden");
+        toast("New Tote Ready");
+        el("vendor").focus();
+      }
+      calcMetrics();
+    } catch (err) { toast("Error: " + (err.message || err)); }
+  }
+
+  async function saveDraft() {
+    if (!toteVal()) return toast("Enter Tote ID");
+    toast("Draft Saving...");
+    try {
+      const res = await apiCall(Object.assign({ action: "save" }, formPayload()));
+      toast(res.success ? "Draft Saved!" : "Failed: " + res.message);
+    } catch (e) { toast("Error: " + (e.message || e)); }
+  }
+
+  async function completePicking() {
+    if (!toteVal()) return toast("Enter Tote ID");
+    if (!el("picker").value.trim()) return toast("Picker Name required");
+    if (!el("totalQty").value.trim()) return toast("Total Qty required");
+    toast("Saving...");
+    try {
+      const res = await apiCall(Object.assign({ action: "saveAndComplete" }, formPayload()));
+      if (!res.success) return toast("Failed: " + res.message);
+      el("vrpCard").classList.remove("hidden");
+      el("vrp").focus();
+      toast("Picking Done! Scan VRP");
+    } catch (e) { toast("Error: " + (e.message || e)); }
+  }
+
+  async function verifyVRP() {
+    const vrp = el("vrp").value.trim();
+    if (!vrp) return toast("Enter VRP number");
+    toast("Verifying...");
+    try {
+      const res = await apiCall({ action: "vrpVerify", toteId: toteVal(), vrp: vrp });
+      if (!res.success) return toast("Failed: " + res.message);
+      toast("✅ VRP Verified!");
+      el("vrp").value = "";
+      viewToteStatus();
+    } catch (e) { toast("Error: " + (e.message || e)); }
+  }
+
+  async function viewToteStatus() {
+    const tote = toteVal();
+    if (!tote) return toast("Enter Tote ID first");
+    try {
+      const res = await apiCall({ action: "get", toteId: tote });
+      if (res && res.success && res.data) {
+        el("vTote").textContent = res.data.toteId;
+        el("vVend").textContent = res.data.vendor || "---";
+        el("vPick").textContent = res.data.pickerName || "---";
+        el("vUnits").textContent = `${res.data.totalQty || 0} (Rej: ${res.data.rejectQty || 0})`;
+        el("vStatus").textContent = res.data.status || "Saved";
+        el("vVRP").textContent = res.data.vrp || "---";
+        el("viewCard").classList.remove("hidden");
+      } else toast("Tote not found");
+    } catch (e) { toast(e.message || e); }
+  }
+
+  async function viewHistoryLogs() {
+    const tote = toteVal();
+    if (!tote) return toast("Enter Tote ID first");
+    try {
+      const res = await apiCall({ action: "history", toteId: tote });
+      const h = (res.data && res.data.history) || [];
+      el("histLogs").innerHTML = h.length
+        ? h.map(r => `<div class="detail-item"><span class="detail-key">${esc(r.resetTimestamp)}</span><span class="detail-val">${esc(r.pickerName)} | ${esc(r.totalQty)}/${esc(r.rejectQty)} | ${esc(r.vrp)}</span></div>`).join("")
+        : "No history";
+      el("histCard").classList.remove("hidden");
+    } catch (e) { toast(e.message || e); }
+  }
+
+  async function resetTote() {
+    const tote = toteVal();
+    if (!confirm(`Dispatch & reset Tote: ${tote}?`)) return;
+    toast("Archiving...");
+    try {
+      const res = await apiCall({ action: "reset", toteId: tote });
+      if (!res.success) return toast("Failed: " + res.message);
+      ["pickCard","vrpCard","viewCard"].forEach(i => el(i).classList.add("hidden"));
+      el("toteId").value = "";
+      el("toteId").focus();
+      toast("✅ Archived & Reset!");
+    } catch (e) { toast(e.message || e); }
+  }
+
+  function closeView() { el("viewCard").classList.add("hidden"); }
+  function closeHist() { el("histCard").classList.add("hidden"); }
+
+  el("toteId").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); loadTote(); } });
+  el("vrp").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); verifyVRP(); } });
+</script>
+</body>
+</html>
